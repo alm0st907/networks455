@@ -7,6 +7,8 @@
 #include <sys/socket.h>
 #include <net/if.h>
 #include <netinet/ether.h>
+#include <linux/ip.h>
+#include <linux/tcp.h>
 
 #define BUF_SIZ		65536
 #define SEND 0
@@ -15,12 +17,59 @@
 void send_message(){
 
 	//Do something here
+	// struct ifreq ifreq_i;
+	// memset(&ifreq_i,0,sizeof(ifreq_i));
+	// strncpy(ifreq_i.ifr_name,wlan0,IFNAMSIZ-1); //giving name of Interface
+	
+	// if((ioctl(sock_raw,SIOCGIFINDEX,&ifreq_i))<0)
+	// printf(error in index ioctl reading);//getting Index Name
+	
+	// printf(index=%d\n,ifreq_i.ifr_ifindex);	
+
 
 }
 
 void recv_message(){
 
-	//Do something here
+	//setting up for recieve
+	int sock_r;
+	int ipHeaderLen, ethHeaderSize, udpHeaderSize;
+	
+	//to use IP packets intsead use ETH_P_IP?
+	sock_r = socket(AF_PACKET,SOCK_RAW,htons(ETH_P_ALL)); // recieve on all 
+	if(sock_r<0)
+	{
+		printf("socket failed\n");
+		return;
+	}
+
+	unsigned char *buff = (unsigned char*) malloc(BUF_SIZ);
+	memset(buff,0,BUF_SIZ);
+	struct sockaddr saddr;
+	int saddr_len = sizeof(saddr);
+
+	//now rec packet, write to buff
+	int bufferLen = recvfrom(sock_r,buff,BUF_SIZ,0,&saddr,(socklen_t*)&saddr_len);
+
+	printf("waiting to recieve packet...\n");
+	while (buff<=0)
+	{
+
+	}
+	printf("Message Received\n");
+	
+	//store ethernet header
+	struct ethhdr *ether = (struct ethhdr *) (buff);
+	ethHeaderSize = sizeof(struct ethhdr);
+	//store IP header, and grab the length
+	struct iphdr *ip = (struct iphdr *)(buff + ethHeaderSize);
+	ipHeaderLen = ip->ihl * 4;
+	
+	struct tcphdr *tcpHeader = (struct tcphdr*)(buff+ipHeaderLen+sizeof(struct ethhdr));
+
+	unsigned char* user_data = (unsigned char *)((unsigned char *)tcpHeader + (tcpHeader->doff * 4));
+	
+	printf("%s\n",user_data);
 
 }
 
@@ -28,6 +77,8 @@ int main(int argc, char *argv[])
 {
 	int mode;
 	char hw_addr[6];
+
+	// IFNAMESIZ defined in net/if.h so ignore lint
 	char interfaceName[IFNAMSIZ];
 	char buf[BUF_SIZ];
 	memset(buf, 0, BUF_SIZ);
@@ -48,6 +99,7 @@ int main(int argc, char *argv[])
 				mode=RECV;
 				correct=1;
 			}
+
 		}
 		strncpy(interfaceName, argv[2], IFNAMSIZ);
 	 }
@@ -63,7 +115,10 @@ int main(int argc, char *argv[])
 		send_message();
 	}
 	else if (mode == RECV){
-		recv_message();
+		while (1)
+		{
+			recv_message();
+		}
 	}
 
 	return 0;
