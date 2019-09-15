@@ -8,7 +8,6 @@
 #include <net/if.h>
 #include <netinet/ether.h>
 #include <linux/ip.h>
-#include <linux/tcp.h>
 
 #define BUF_SIZ		65536
 #define SEND 0
@@ -28,9 +27,9 @@ void send_message(){
 	struct iphdr *iph = (struct iphdr *) (sendbuf + sizeof(struct ether_header));
 	struct sockaddr_ll socket_address;
 
-	//open socket for sending
-	if ((sockfd = socket(AF_PACKET, SOCK_RAW, ETH_P_ALL)) == -1) {
-	    perror("socket");
+	/* Open PF_PACKET socket, listening for EtherType ETHER_TYPE */
+	if ((sockfd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
+		perror("listener: socket");	
 	}
 
 	/* Get the index of the interface to send on */
@@ -100,65 +99,35 @@ void send_message(){
 }
 
 void recv_message(){
-	char sender[INET6_ADDRSTRLEN];
 	int sockfd, ret, i;
-	int sockopt;
 	ssize_t numbytes;
-	struct ifreq ifopts;	/* set promiscuous mode */
-	struct ifreq if_ip;	/* get ip addr */
 	struct ifreq if_mac;
-	struct sockaddr_storage their_addr;
 	uint8_t buf[BUF_SIZ];
-	
 
 	/* Header structures */
 	struct ether_header *eh = (struct ether_header *) buf;
-	struct iphdr *iph = (struct iphdr *) (buf + sizeof(struct ether_header));
-	struct udphdr *udph = (struct udphdr *) (buf + sizeof(struct iphdr) + sizeof(struct ether_header));
-
-	memset(&if_ip, 0, sizeof(struct ifreq));
 
 	/* Open PF_PACKET socket, listening for EtherType ETHER_TYPE */
-	if ((sockfd = socket(PF_PACKET, SOCK_RAW, htons(ETHER_TYPE))) == -1) {
+	if ((sockfd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
 		perror("listener: socket");	
 		return -1;
 	}
 
-	//dynamically set recieving mac
+	//printing out mac address that recieves
 	memset(&if_mac, 0, sizeof(struct ifreq));
 	strncpy(if_mac.ifr_name, interfaceName , IFNAMSIZ-1);
 	if (ioctl(sockfd, SIOCGIFHWADDR, &if_mac)==0) {
-		printf("Sending on mac address: ");	
+		printf("Recieving on mac address: ");	
   	  	for (int i = 0; i < 6; ++i)
 		{
 			printf("%02x", (unsigned char) if_mac.ifr_addr.sa_data[i]);
 			//setup source mac addy while printing
 			if(i<5)
 				printf(":");
-
 		}
 		printf("\n");
 	}
-
-
-	/* Set interface to promiscuous mode - do we need to do this every time? */
-	strncpy(ifopts.ifr_name, interfaceName, IFNAMSIZ-1);
-	ioctl(sockfd, SIOCGIFFLAGS, &ifopts);
-	ifopts.ifr_flags |= IFF_PROMISC;
-	ioctl(sockfd, SIOCSIFFLAGS, &ifopts);
-	/* Allow the socket to be reused - incase connection is closed prematurely */
-	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &sockopt, sizeof sockopt) == -1) {
-		perror("setsockopt");
-		close(sockfd);
-		exit(EXIT_FAILURE);
-	}
-	/* Bind to device */
-	if (setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, interfaceName, IFNAMSIZ-1) == -1)	{
-		perror("SO_BINDTODEVICE");
-		close(sockfd);
-		exit(EXIT_FAILURE);
-	}
-
+	
 	printf("listener: Waiting to recvfrom...\n");
 	numbytes = recvfrom(sockfd, buf, BUF_SIZ, 0, NULL, NULL);
 	while (numbytes<1)
@@ -178,12 +147,10 @@ void recv_message(){
 		printf("Correct destination MAC address\n");
 	} 
 
-	/* UDP payload length */
-	ret = ntohs(udph->len) - sizeof(struct udphdr);
-
 	/* Print packet */
 	printf("Data:	");
-	for (i=12; i<numbytes; i++) 
+	//offset to hit the data and not the junk stuff
+	for (int i = 12; i<numbytes; i++) 
 		printf("%c", buf[i]);
 	printf("\n");
 
