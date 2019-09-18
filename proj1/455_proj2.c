@@ -147,12 +147,9 @@ void recv_message(){
 		printf("Correct destination MAC address\n");
 	} 
 
-	/* Print packet */
-	printf("Data:	");
 	//offset to hit the data and not the junk stuff
-	for (int i = 12; i<numbytes; i++) 
-		printf("%c", buf[i]);
-	printf("\n");
+	unsigned char *message = (buf + sizeof(*eh) );
+	printf("Incoming message: %s\n", message);	printf("\n");
 
 	close(sockfd);
 }
