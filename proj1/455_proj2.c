@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 #include <net/if.h>
 #include <netinet/ether.h>
-#include <linux/ip.h>
+
 
 #define BUF_SIZ		65536
 #define SEND 0
@@ -24,22 +24,21 @@ void send_message(){
 	int tx_len = 0;
 	char sendbuf[BUF_SIZ];
 	struct ether_header *eh = (struct ether_header *) sendbuf;
-	struct iphdr *iph = (struct iphdr *) (sendbuf + sizeof(struct ether_header));
 	struct sockaddr_ll socket_address;
 
-	/* Open PF_PACKET socket, listening for EtherType ETHER_TYPE */
-	if ((sockfd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
+	//open a socket to listen on
+	if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
 		perror("listener: socket");	
 	}
 
-	/* Get the index of the interface to send on */
+	//assigning to socket to an interface
 	memset(&if_idx, 0, sizeof(struct ifreq));
 	strncpy(if_idx.ifr_name, interfaceName, IFNAMSIZ-1);
 	if (ioctl(sockfd, SIOCGIFINDEX, &if_idx) < 0)
 	    perror("SIOCGIFINDEX");
 
 
-	/* Get the MAC address of the interface to send on */
+	//getting mac address of interface
 	memset(&if_mac, 0, sizeof(struct ifreq));
 	strncpy(if_mac.ifr_name, interfaceName, IFNAMSIZ-1);
 	if (ioctl(sockfd, SIOCGIFHWADDR, &if_mac)==0) {
@@ -80,7 +79,6 @@ void send_message(){
 	tx_len += sizeof(struct ether_header);
 
 
-	// printf("strlen %d\n",strlen(buf));
 	//copy string into buffer to send
 	for(int i = 0; i<strlen(buf);i++)
 	{
@@ -148,12 +146,7 @@ void recv_message(){
 	} 
 
 	/* Print packet */
-	printf("Data:	");
-	//offset to hit the data and not the junk stuff
-	for (int i = 12; i<numbytes; i++) 
-		printf("%c", buf[i]);
-	printf("\n");
-
+	printf("Message: %s\n", buf+sizeof(*eh));
 	close(sockfd);
 }
 
@@ -200,7 +193,9 @@ int main(int argc, char *argv[])
 		send_message();
 	}
 	else if (mode == RECV){
-		recv_message();
+		//loop so we can keep recieving
+		while(1)
+			recv_message();
 	}
 
 	return 0;
