@@ -1,4 +1,6 @@
-run the "run" binary as described in the assignment 
+run the "run" binary as described in the assignment within mininet
+
+The program may behave slightly weird in vm's (it did on my mac) but ran fine on a dual boot system
 
 ./run Send \<interfaceName> \<DestHWAddy> \<message>
 
