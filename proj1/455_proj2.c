@@ -8,7 +8,6 @@
 #include <net/if.h>
 #include <netinet/ether.h>
 
-
 #define BUF_SIZ		65536
 #define SEND 0
 #define RECV 1
@@ -18,17 +17,19 @@ char buf[BUF_SIZ];
 char hw_addr[6];
 
 void send_message(){
-	int sockfd, i;
+	int sockfd;
 	struct ifreq if_idx;
 	struct ifreq if_mac;
-	int tx_len = 0;
+	int sendLength = 0;
 	char sendbuf[BUF_SIZ];
+	//ethernet header
 	struct ether_header *eh = (struct ether_header *) sendbuf;
 	struct sockaddr_ll socket_address;
 
 	//open a socket to listen on
-	if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
-		perror("listener: socket");	
+	if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
+		perror("socket() failed");	
+		exit(1);
 	}
 
 	//assigning to socket to an interface
@@ -41,6 +42,8 @@ void send_message(){
 	//getting mac address of interface
 	memset(&if_mac, 0, sizeof(struct ifreq));
 	strncpy(if_mac.ifr_name, interfaceName, IFNAMSIZ-1);
+
+	//modified to print out mac addresses for convienience/debugging
 	if (ioctl(sockfd, SIOCGIFHWADDR, &if_mac)==0) {
 		printf("Sending on mac address: ");	
   	  	for (int i = 0; i < 6; ++i)
@@ -74,15 +77,15 @@ void send_message(){
 	    perror("SIOCGIFHWADDR");
 	}
 
-	/* Ethertype field */
+	//some settings for the ethernet header
 	eh->ether_type = htons(ETH_P_IP);
-	tx_len += sizeof(struct ether_header);
+	sendLength += sizeof(struct ether_header);
 
 
 	//copy string into buffer to send
 	for(int i = 0; i<strlen(buf);i++)
 	{
-		sendbuf[tx_len++] = buf[i];
+		sendbuf[sendLength++] = buf[i];
 	}	
 
 	/* Index of the network device */
@@ -91,27 +94,29 @@ void send_message(){
 	socket_address.sll_halen = ETH_ALEN;
 
 	/* Send packet */
-	if (sendto(sockfd, sendbuf, tx_len, 0, (struct sockaddr*)&socket_address, sizeof(struct sockaddr_ll)) < 0)
+	if (sendto(sockfd, sendbuf, sendLength, 0, (struct sockaddr*)&socket_address, sizeof(struct sockaddr_ll)) < 0)
 	    printf("Send failed\n");
 
+	//clearing the buffer
+	memset(buf,0,BUF_SIZ);
 }
 
 void recv_message(){
-	int sockfd, ret, i;
+	int sockfd;
 	ssize_t numbytes;
 	struct ifreq if_mac;
-	uint8_t buf[BUF_SIZ];
 
-	/* Header structures */
+	//ethernet header
 	struct ether_header *eh = (struct ether_header *) buf;
 
-	/* Open PF_PACKET socket, listening for EtherType ETHER_TYPE */
-	if ((sockfd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
-		perror("listener: socket");	
-		return -1;
+	//open a socket to listen on
+	if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
+		perror("socket() failed");	
+		exit(1);
 	}
+	
 
-	//printing out mac address that recieves
+	//modified to print out mac addresses for convienience/debugging
 	memset(&if_mac, 0, sizeof(struct ifreq));
 	strncpy(if_mac.ifr_name, interfaceName , IFNAMSIZ-1);
 	if (ioctl(sockfd, SIOCGIFHWADDR, &if_mac)==0) {
@@ -125,15 +130,20 @@ void recv_message(){
 		}
 		printf("\n");
 	}
+	else
+	{
+	    perror("SIOCGIFHWADDR");
+	}
 	
-	printf("listener: Waiting to recvfrom...\n");
+	
+	printf("Waiting for packet..\n");
 	numbytes = recvfrom(sockfd, buf, BUF_SIZ, 0, NULL, NULL);
 	while (numbytes<1)
 	{
 		//wait to recieve bytes
 	}
 	
-	printf("listener: got packet %lu bytes\n", numbytes);
+	printf("got packet %lu bytes\n", numbytes);
 
 	/* Check the packet is for me */
 	if (eh->ether_dhost[0] == (unsigned char)if_mac.ifr_addr.sa_data[0] &&
@@ -142,12 +152,14 @@ void recv_message(){
 			eh->ether_dhost[3] == (unsigned char) if_mac.ifr_addr.sa_data[3] &&
 			eh->ether_dhost[4] ==  (unsigned char) if_mac.ifr_addr.sa_data[4] &&
 			eh->ether_dhost[5] == (unsigned char) if_mac.ifr_addr.sa_data[5] ){
-		printf("Correct destination MAC address\n");
+		printf("packet is for this device\n");
 	} 
 
-	/* Print packet */
+	//print out the data
 	printf("Message: %s\n", buf+sizeof(*eh));
 	close(sockfd);
+	//prevent junk messages on reloop
+	memset(buf,0,BUF_SIZ);
 }
 
 int main(int argc, char *argv[])
@@ -200,4 +212,3 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
-
