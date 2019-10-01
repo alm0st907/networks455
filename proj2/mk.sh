@@ -1,3 +1,3 @@
 rm run
-gcc 455_proj2.c -o run
+gcc 455_refactor.c -o run
 
