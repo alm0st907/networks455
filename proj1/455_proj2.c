@@ -154,9 +154,16 @@ void recv_message()
 		eh->ether_dhost[4] == (unsigned char)if_mac.ifr_addr.sa_data[4] &&
 		eh->ether_dhost[5] == (unsigned char)if_mac.ifr_addr.sa_data[5])
 	{
-		printf("packet is for this device\n");
+		printf("packet is for this device\n\n");
+	}
+	else{
+		printf("Message recieved not for us\n");
+		return;
 	}
 
+	printf("Recieve message from %02x:%02x:%02x:%02x:%02x:%02x\n", eh->ether_shost[0],eh->ether_shost[1], eh->ether_shost[2],
+	eh->ether_shost[3],eh->ether_shost[4],eh->ether_shost[5]);
+	printf("Message type 0x%04x\n",eh->ether_type);
 	//print out the data
 	printf("Message: %s\n", buf + sizeof(*eh));
 	close(sockfd);
