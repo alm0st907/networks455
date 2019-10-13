@@ -24,7 +24,7 @@ void send_message()
 	int sendLength = 0;
 	char sendbuf[BUF_SIZ];
 	//ethernet header
-	struct ether_header *eh = (struct ether_header *)sendbuf;
+	struct ethhdr *eh = (struct ethhdr *)sendbuf;
 	struct sockaddr_ll socket_address;
 
 	//open a socket to listen on
@@ -52,7 +52,7 @@ void send_message()
 		{
 			printf("%02x", (unsigned char)if_mac.ifr_addr.sa_data[i]);
 			//setup source mac addy while printing
-			eh->ether_shost[i] = ((uint8_t *)&if_mac.ifr_hwaddr.sa_data)[i];
+			eh->h_source[i] = ((uint8_t *)&if_mac.ifr_hwaddr.sa_data)[i];
 			if (i < 5)
 				printf(":");
 		}
@@ -64,7 +64,7 @@ void send_message()
 		{
 			printf("%02x", (unsigned char)hw_addr[i]);
 			//setup dest hardware addy while we're at it
-			eh->ether_dhost[i] = (uint8_t)hw_addr[i];
+			eh->h_dest[i] = (uint8_t)hw_addr[i];
 			socket_address.sll_addr[i] = (uint8_t)hw_addr[i];
 
 			//pretty print
@@ -79,8 +79,8 @@ void send_message()
 	}
 
 	//some settings for the ethernet header
-	eh->ether_type = htons(ETH_P_IP);
-	sendLength += sizeof(struct ether_header);
+	eh->h_proto = htons(ETH_P_IP);
+	sendLength += sizeof(struct ethhdr);
 
 	//copy string into buffer to send
 	for (int i = 0; i < strlen(buf); i++)
@@ -108,7 +108,7 @@ void recv_message()
 	struct ifreq if_mac;
 
 	//ethernet header
-	struct ether_header *eh = (struct ether_header *)buf;
+	struct ethhdr *eh = (struct ethhdr *)buf;
 
 	//open a socket to listen on
 	if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0)
@@ -147,12 +147,12 @@ void recv_message()
 	printf("got packet %lu bytes\n", numbytes);
 
 	/* Check the packet is for me */
-	if (eh->ether_dhost[0] == (unsigned char)if_mac.ifr_addr.sa_data[0] &&
-		eh->ether_dhost[1] == (unsigned char)if_mac.ifr_addr.sa_data[1] &&
-		eh->ether_dhost[2] == (unsigned char)if_mac.ifr_addr.sa_data[2] &&
-		eh->ether_dhost[3] == (unsigned char)if_mac.ifr_addr.sa_data[3] &&
-		eh->ether_dhost[4] == (unsigned char)if_mac.ifr_addr.sa_data[4] &&
-		eh->ether_dhost[5] == (unsigned char)if_mac.ifr_addr.sa_data[5])
+	if (eh->h_dest[0] == (unsigned char)if_mac.ifr_addr.sa_data[0] &&
+		eh->h_dest[1] == (unsigned char)if_mac.ifr_addr.sa_data[1] &&
+		eh->h_dest[2] == (unsigned char)if_mac.ifr_addr.sa_data[2] &&
+		eh->h_dest[3] == (unsigned char)if_mac.ifr_addr.sa_data[3] &&
+		eh->h_dest[4] == (unsigned char)if_mac.ifr_addr.sa_data[4] &&
+		eh->h_dest[5] == (unsigned char)if_mac.ifr_addr.sa_data[5])
 	{
 		printf("packet is for this device\n\n");
 	}
@@ -161,10 +161,10 @@ void recv_message()
 		return;
 	}
 
-	printf("Recieve message from %02x:%02x:%02x:%02x:%02x:%02x\n", eh->ether_shost[0],eh->ether_shost[1], eh->ether_shost[2],
-	eh->ether_shost[3],eh->ether_shost[4],eh->ether_shost[5]);
-	printf("Message type 0x%04x\n",eh->ether_type);
-	//print out the data
+	printf("Recieve message from %02x:%02x:%02x:%02x:%02x:%02x\n", eh->h_source[0],eh->h_source[1], eh->h_source[2],
+	eh->h_source[3],eh->h_source[4],eh->h_source[5]);
+	printf("Message type 0x%04x\n",eh->h_proto);
+	// //print out the data
 	printf("Message: %s\n", buf + sizeof(*eh));
 	close(sockfd);
 	//prevent junk messages on reloop
