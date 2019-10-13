@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
   int sendLength = 0;
   char sendbuf[BUF_SIZ];
   // ethernet header
-  struct ether_header *eh = (struct ether_header *)sendbuf;
+  struct ethhdr *eh = (struct ethhdr *)sendbuf;
   struct sockaddr_ll socket_address;
 
   // arp header
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
       if (debug)
         printf("%02x", (unsigned char)if_mac.ifr_addr.sa_data[i]);
       // setup source mac addy while printing
-      eh->ether_shost[i] = ((uint8_t *)&if_mac.ifr_hwaddr.sa_data)[i];
+      eh->h_source[i] = ((uint8_t *)&if_mac.ifr_hwaddr.sa_data)[i];
       if (debug) {
         if (i < 5)
           printf(":");
