@@ -32,12 +32,11 @@ struct arp_header {
   unsigned char ar_sha[MAC_LENGTH];
   unsigned char ar_sip[IPV4_LENGTH];
   unsigned char ar_tha[MAC_LENGTH];
-  unsigned char ar_tip[IPV4_LENGTH];
+  unsigned char trg_ip[IPV4_LENGTH];
 };
 
 int main(int argc, char *argv[]) {
   int mode;
-
   if (argc > 3 && strcmp(argv[3], "debug") == 0) {
     debug = 1;
   }
@@ -55,57 +54,52 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  int sd;
+  int sockfd;
   unsigned char buffer[BUF_SIZ];
-  unsigned char ar_tip[IPV4_LENGTH];
-  unsigned char src_ip[IPV4_LENGTH];
+  unsigned char trg_ip[IPV4_LENGTH]; //arp target ip
+  unsigned char src_ip[IPV4_LENGTH]; //source ip
   struct ifreq ifr_ip, if_idx;
-  struct ethhdr *send_req = (struct ethhdr *)buffer;
+  struct ethhdr *send_req = (struct ethhdr *)buffer; //set our buffers to be ethhdr's 
   struct ethhdr *rcv_resp = (struct ethhdr *)buffer;
-  struct arp_header *arp_req = (struct arp_header *)(buffer + ETH2_HEADER_LEN);
+  struct arp_header *arp_req = (struct arp_header *)(buffer + ETH2_HEADER_LEN); //double set so its easy to distinguish between sent and response
   struct arp_header *arp_resp = (struct arp_header *)(buffer + ETH2_HEADER_LEN);
   struct sockaddr_ll socket_address;
-  int index, ret, length = 0, ifindex;
-  struct addrinfo *res;
+  int index, ret, length = 0, ifindex; //basic fields for sockets/etc
+  struct addrinfo *res; //for setting ip
   memset(buffer, 0, BUF_SIZ);
   /*open socket*/
-  sd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-  if (sd == -1) {
+  sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+  if (sockfd == -1) {
     perror("socket():");
     exit(1);
   }
   strcpy(ifr_ip.ifr_name, argv[1]);
-  /*retrieve ethernet interface index*/
-  if (ioctl(sd, SIOCGIFINDEX, &ifr_ip) == -1) {
+
+  //get index
+  if (ioctl(sockfd, SIOCGIFINDEX, &ifr_ip) == -1) {
     perror("SIOCGIFINDEX");
     exit(1);
   }
   ifindex = ifr_ip.ifr_ifindex;
   printf("interface index is %d\n", ifindex);
 
-  /*retrieve corresponding MAC*/
-  if (ioctl(sd, SIOCGIFHWADDR, &ifr_ip) == -1) {
+ //get mac address
+  if (ioctl(sockfd, SIOCGIFHWADDR, &ifr_ip) == -1) {
     perror("SIOCGIFINDEX");
     exit(1);
   }
-  close(sd);
-
-  sd = socket(AF_INET, SOCK_DGRAM, 0);
-  memset(&if_idx, 0, sizeof(struct ifreq));
-  strncpy(if_idx.ifr_name, argv[1], IF_NAMESIZE - 1);
-  if (ioctl(sd, SIOCGIFADDR, &if_idx) < 0)
-    perror("SIOCGIFADDR");
-
-  close(sd);
+  close(sockfd);
 
   int status;
-
-  sd = socket(AF_INET, SOCK_DGRAM, 0);
+  //getting info for source ip
+  sockfd = socket(AF_INET, SOCK_DGRAM, 0);
   memset(&if_idx, 0, sizeof(struct ifreq));
   strncpy(if_idx.ifr_name, argv[1], IF_NAMESIZE - 1);
-  if (ioctl(sd, SIOCGIFADDR, &if_idx) < 0)
+  if (ioctl(sockfd, SIOCGIFADDR, &if_idx) < 0)
     perror("SIOCGIFADDR");
-  close(sd);
+  close(sockfd);
+
+  //convert and copy
   strcpy(src_ip, inet_ntoa(((struct sockaddr_in *)&if_idx.ifr_addr)->sin_addr));
 
   // Source IP address
@@ -117,14 +111,15 @@ int main(int argc, char *argv[]) {
   }
   // alternative way to get the ip address back
   // Resolve target using getaddrinfo().
-  strcpy(ar_tip, argv[2]);
-  //   printf("my target ip pre parse %s\n", ar_tip);
-  if ((status = getaddrinfo(ar_tip, NULL, NULL, &res)) != 0) {
+  strcpy(trg_ip, argv[2]);
+  if ((status = getaddrinfo(trg_ip, NULL, NULL, &res)) != 0) {
     fprintf(stderr, "getaddrinfo() failed\n");
     exit(EXIT_FAILURE);
   }
   struct sockaddr_in *ipv4 = (struct sockaddr_in *)res->ai_addr;
-  memcpy(&arp_req->ar_tip, &ipv4->sin_addr, 4 * sizeof(uint8_t));
+  memcpy(&arp_req->trg_ip, &ipv4->sin_addr, 4 * sizeof(uint8_t));
+
+  //setting fields of of requests
   for (index = 0; index < 6; index++) {
 
     send_req->h_dest[index] = (unsigned char)0xff;
@@ -147,7 +142,7 @@ int main(int argc, char *argv[]) {
          socket_address.sll_addr[2], socket_address.sll_addr[3],
          socket_address.sll_addr[4], socket_address.sll_addr[5]);
 
-  /*prepare sockaddr_ll*/
+  //prep socket address
   socket_address.sll_family = AF_PACKET;
   socket_address.sll_protocol = htons(ETH_P_ARP);
   socket_address.sll_ifindex = ifindex;
@@ -157,10 +152,10 @@ int main(int argc, char *argv[]) {
   socket_address.sll_addr[6] = 0x00;
   socket_address.sll_addr[7] = 0x00;
 
-  /* Setting protocol of the packet */
+  //send request protocol
   send_req->h_proto = htons(ETH_P_ARP);
 
-  /* Creating ARP request */
+  //set the arp header
   arp_req->ar_hrd = htons(HW_TYPE);
   arp_req->ar_pro = htons(ETH_P_IP);
   arp_req->ar_hln = MAC_LENGTH;
@@ -168,12 +163,12 @@ int main(int argc, char *argv[]) {
   arp_req->ar_op = htons(ARP_REQUEST);
 
   // Submit request for a raw socket descriptor.
-  if ((sd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
+  if ((sockfd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
     perror("socket() failed ");
     exit(EXIT_FAILURE);
   }
 
-  ret = sendto(sd, buffer, 42, 0, (struct sockaddr *)&socket_address,
+  ret = sendto(sockfd, buffer, 42, 0, (struct sockaddr *)&socket_address,
                sizeof(socket_address));
   if (ret == -1) {
     perror("sendto():");
@@ -183,7 +178,7 @@ int main(int argc, char *argv[]) {
   printf("\n");
   memset(buffer, 0x00, BUF_SIZ);
   while (1) {
-    length = recvfrom(sd, buffer, BUF_SIZ, 0, NULL, NULL);
+    length = recvfrom(sockfd, buffer, BUF_SIZ, 0, NULL, NULL);
     if (length == -1) {
       perror("recvfrom():");
       exit(1);
