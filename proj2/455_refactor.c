@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
   struct sockaddr_ll socket_address;
   int index, ret, length = 0, ifindex;
   struct addrinfo *res;
-  memset(buffer, 0x00, 60);
+  memset(buffer, 0, BUF_SIZ);
   /*open socket*/
   sd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
   if (sd == -1) {
@@ -173,7 +173,6 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  buffer[32] = 0x00;
   ret = sendto(sd, buffer, 42, 0, (struct sockaddr *)&socket_address,
                sizeof(socket_address));
   if (ret == -1) {
@@ -181,20 +180,22 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  printf("\n\t");
-  memset(buffer, 0x00, 60);
+  printf("\n");
+  memset(buffer, 0x00, BUF_SIZ);
   while (1) {
     length = recvfrom(sd, buffer, BUF_SIZ, 0, NULL, NULL);
     if (length == -1) {
       perror("recvfrom():");
       exit(1);
     }
+
+    //validating the arp reply
     if (htons(rcv_resp->h_proto) == PROTO_ARP) {
-      // if( arp_resp->ar_op == ARP_REPLY )
-      printf(" RECEIVED ARP RESP len=%d \n", length);
+      if( arp_resp->ar_op == ARP_REPLY )
+      printf("RECEIVED ARP RESP len=%d \n", length);
 
       // print this one
-      printf("\n MAC learned from ARP :");
+      printf("MAC learned from ARP :");
       for (index = 0; index < 6; index++) {
         if (index < 5) {
 
@@ -205,7 +206,7 @@ int main(int argc, char *argv[]) {
       }
 
       // check against this one
-      printf("\n Our MAC (intended reciever for ARP) :");
+      printf("\nOur MAC (intended reciever for ARP) :");
       for (index = 0; index < 6; index++) {
         if ((unsigned char)ifr_ip.ifr_hwaddr.sa_data[index] ==
                 arp_resp->ar_tha[index] &&
