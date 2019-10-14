@@ -1,6 +1,8 @@
+//Garrett Rudisill
 #include <arpa/inet.h>
 #include <linux/if_ether.h>  // ETH_P_ARP = 0x0806
 #include <linux/if_packet.h> // struct sockaddr_ll
+// #include <linux/if_arp.h> //contains ARPHDR_ETHER but creates a double define
 #include <net/if.h>          // struct ifreq
 #include <netdb.h>           // struct addrinfo
 #include <netinet/ether.h>
@@ -9,10 +11,7 @@
 #include <string.h>
 #include <sys/ioctl.h>  // macro ioctl is defined
 #include <sys/socket.h> // needed for socket()
-#define PROTO_ARP 0x0806
-#define ETH2_HEADER_LEN 14
 #define HW_TYPE 1
-#define PROTOCOL_TYPE 0x800
 #define MAC_LENGTH 6     //mac address length
 #define IPV4_LENGTH 4    //ipv4 have 4 len addresses
 #define ARP_REQUEST 0x01 // macros for request/reply
@@ -68,8 +67,8 @@ int main(int argc, char *argv[])
   struct ifreq ifr_ip, if_idx;
   struct ethhdr *send_req = (struct ethhdr *)buffer; //set our buffers to be ethhdr's
   struct ethhdr *rcv_resp = (struct ethhdr *)buffer;
-  struct arp_header *arp_req = (struct arp_header *)(buffer + ETH2_HEADER_LEN); //double set so its easy to distinguish between sent and response
-  struct arp_header *arp_resp = (struct arp_header *)(buffer + ETH2_HEADER_LEN);
+  struct arp_header *arp_req = (struct arp_header *)(buffer + ETH_HLEN); //double set so its easy to distinguish between sent and response
+  struct arp_header *arp_resp = (struct arp_header *)(buffer + ETH_HLEN);
   struct sockaddr_ll socket_address;
   int ret, length = 0, ifindex; //basic fields for sockets/etc
   struct addrinfo *res;                //for setting ip
@@ -199,7 +198,7 @@ int main(int argc, char *argv[])
     }
 
     //validating the arp reply
-    if (htons(rcv_resp->h_proto) == PROTO_ARP)
+    if (htons(rcv_resp->h_proto) == ETH_P_ARP)
     {
       if (arp_resp->ar_op == ARP_REPLY)
         printf("RECEIVED ARP RESP len=%d \n", length);
