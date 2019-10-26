@@ -22,11 +22,12 @@ def createEther(dest_addr=None):
         host_ether_header.type = 0x806
 
     else:
-        host_ether_header = Ether(dst=dest_addr)
-        host_ether_header.type = 0x800
+        host_ether_header = Ether(dst=dest_addr,type=0x800)
+
     # ls(host_ether_header) shows all fields within
-    if(debug):
-        host_ether_header.show()  # alternative way to show header structure
+    # if(debug):
+    host_ether_header.show()  # alternative way to show header structure
+    ls(host_ether_header)
 
     return host_ether_header
 
@@ -62,12 +63,37 @@ if __name__ == "__main__":
     if(len(sys.argv) > 1 and sys.argv[1] == "debug"):
         debug = 1
 
-    getSysInfo()  # this only debugs my sys info rn, but is useful
-    eth = createEther()
-    arp = createArp("10.0.0.2")
+    if(len(sys.argv)>1 and sys.argv[1]=="arp"):
+        getSysInfo()  # this only debugs my sys info rn, but is useful
+        eth = createEther()
+        arp = createArp("10.0.0.2")
 
-    print("\nAssembled Payload:")
-    full_send = eth/arp  # scapy way to assemble the total thing
-    full_send.show()
+        print("\nAssembled Payload:")
+        full_send = eth/arp  # scapy way to assemble the total thing
+        full_send.show()
 
-    sendRecvARP(full_send)
+        sendRecvARP(full_send)
+    
+    if(len(sys.argv)>1 and sys.argv[1]=="send"):
+        eth_head = Ether()
+        eth_head.src = get_if_hwaddr(conf.iface)
+        eth_head.dst = str(sys.argv[2])
+        eth_head.type = "IPv4"
+        payload = Raw(load="this is my string")
+        packet = eth_head/payload
+        packet.show()
+        sendp((packet/payload))
+        print("sent")
+
+    if(len(sys.argv)>1 and sys.argv[1]=="recv"):
+        print("attempt to recv")
+        msg_pkt = None
+        while msg_pkt is None:
+            msg_pkt = sniff(count=1)
+        print("received pkt")
+        # msg_pkt[0].show()
+        # try:
+        print(msg_pkt[0][Raw].load)
+        # except:
+        #     print("shits broke")
+
