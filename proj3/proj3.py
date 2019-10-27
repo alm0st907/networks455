@@ -55,7 +55,7 @@ def sendIPmsg(dest_ip, router_ip, msg):
     eth = Ether(type=0x800, dst=dest_hw_addr)
     iph = IP(dst=dest_ip, ttl=6)
     final_packet = eth/iph
-    raw_payload = Raw(load=msg)
+    raw_payload = Raw(load=str(msg))
     final_packet.add_payload(raw_payload)
     if(debug):
         final_packet.show()
@@ -84,9 +84,9 @@ if __name__ == "__main__":
 
             # use sniff to recieve packets on our default interface
             print("Listening for message")
-            msg_pkt = sniff(count=1)
+            msg_pkt = sniff(count=1, filter="ip")
             #show because sometimes the packet is getting clobbered
-            msg_pkt[0].show()
+            # msg_pkt[0].show()
 
             # ensure the package has our raw payload, and is for us
             if(msg_pkt[0].haslayer(Raw) and msg_pkt[0][Ether].dst == our_addr):
