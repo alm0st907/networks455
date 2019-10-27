@@ -16,7 +16,8 @@ def sendARP(dest_ip):
         if(resp.haslayer(ARP)):
             print("received an ARP")
             # print(f"\nHW address for {dest_ip} is {resp[ARP].hwsrc}")
-            resp[ARP].show()
+            if(debug):
+                resp[ARP].show()
             return resp[ARP].hwsrc
     except:
         print("Response timed out")
@@ -24,29 +25,12 @@ def sendARP(dest_ip):
 
 def sendEthMsg(dest_hw_addr, msg):
     eth = Ether(type=0x800, dst=dest_hw_addr)
-    raw_payload = Raw(load=msg)
+    raw_payload = Raw(load=str(msg))
     eth.add_payload(raw_payload)
     if(debug):
         print("\nsend eth header\n")
         eth.show()
     sendp(eth)
-
-
-def sendIPMsg(dest_ip, router_ip, msg):
-
-    dest_hw_addr = sendARP(dest_ip)
-
-    eth = Ether(type=0x800, dst=dest_hw_addr)
-    iph = IP(dst=dest_ip, ttl=6)
-    full_pack = eth/iph
-
-    raw_payload = Raw(load=msg)
-    full_pack.add_payload(raw_payload)
-
-    if(debug):
-        print("\nsend eth header\n")
-        full_pack.show()
-    sendp(full_pack)
 
 
 def sendIPmsg(dest_ip, router_ip, msg):
@@ -55,18 +39,32 @@ def sendIPmsg(dest_ip, router_ip, msg):
     then send 0x800 msg to router with ip of desired dest
     '''
     # default ether has router as dest, will arp later for verbosity
-    eth = Ether(type=0x800)
+    local_ip = ARP().psrc #extract IP from dummy generated header
+    local_ip = local_ip.split('.')
+    
+    #compare our IP's for if we need to arp router, or IP
+    dest_hw_addr = None
+    if((router_ip.split('.'[0:3])) == (dest_ip.split('.')[0:3])):
+        print("Same subnet")
+        dest_hw_addr = sendARP(dest_ip)
+    #arp  our router for the HW addr
+    else:
+        pre_proc_ip = router_ip.split('.'[0:3]) #split the initial
+        dst_hw_addr = sendARP(router_ip)
+    #send 
+    eth = Ether(type=0x800, dst=dest_hw_addr)
     iph = IP(dst=dest_ip, ttl=6)
     final_packet = eth/iph
     raw_payload = Raw(load=msg)
     final_packet.add_payload(raw_payload)
-    final_packet.show()
+    if(debug):
+        final_packet.show()
     sendp(final_packet)
 
 
 if __name__ == "__main__":
     global debug
-    debug = 1
+    debug = 0
 
     # send using IP
     if(sys.argv[1] == "ip"):
@@ -87,6 +85,8 @@ if __name__ == "__main__":
             # use sniff to recieve packets on our default interface
             print("Listening for message")
             msg_pkt = sniff(count=1)
+            #show because sometimes the packet is getting clobbered
+            msg_pkt[0].show()
 
             # ensure the package has our raw payload, and is for us
             if(msg_pkt[0].haslayer(Raw) and msg_pkt[0][Ether].dst == our_addr):
