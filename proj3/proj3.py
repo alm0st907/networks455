@@ -75,7 +75,7 @@ def sendIPmsg(dest_ip, router_ip, msg):
         dst_hw_addr = sendARP(router_ip)
     #send 
     eth = Ether(type=0x800, dst=dest_hw_addr)
-    iph = IP(dst=dest_ip, ttl=6,proto=234)
+    iph = IP(dst=dest_ip, ttl=6,proto=253)
     final_packet = eth/iph
     raw_payload = Raw(load=str(msg))
     final_packet.add_payload(raw_payload)
