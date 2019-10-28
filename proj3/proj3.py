@@ -2,18 +2,37 @@ import socket
 from scapy.all import *
 import sys
 import netifaces
+from netaddr import *
 
 # sudo fuser -k 6653/tcp
 
-def determineNetmask():
+def displayInfo():
     interface = conf.iface #default intesrfaces
     info = netifaces.ifaddresses(interface)
     print(f"Interface Info: {info[netifaces.AF_INET][0]}")
-    print(f"Our Netmask: {info[netifaces.AF_INET][0]['netmask']}")
-    # IPNetwork("myIP/myNetmask") == IPNetwork("theirIP/myNetwork")
+    return
+
+def determineNetmask(dest_ip):
+    
+    interface = conf.iface #default intesrfaces
+    info = netifaces.ifaddresses(interface)
+    if(debug):
+        print(f"Interface Info: {info[netifaces.AF_INET][0]}")
+        print(f"Our Netmask: {info[netifaces.AF_INET][0]['netmask']}")
+
+    my_ip = info[netifaces.AF_INET][0]['addr']
+    my_netmask = info[netifaces.AF_INET][0]['netmask']
+
+    if (IPNetwork(my_ip+'/'+my_netmask) == IPNetwork(dest_ip+'/'+my_netmask)):
+        print("IP within our subnet, ARP IP")
+        return True
+    else:
+        print("IP outside subnet, ARP Router")
+        return False
 
 # send arp to destination IP, return its HW address
 def sendARP(dest_ip):
+    
     eth = Ether(type=0x806, dst="ff:ff:ff:ff:ff:ff")
     arph = ARP(pdst=dest_ip)
     final_packet = eth/arph
@@ -46,22 +65,17 @@ def sendIPmsg(dest_ip, router_ip, msg):
     arp our router,
     then send 0x800 msg to router with ip of desired dest
     '''
-    # default ether has router as dest, will arp later for verbosity
-    local_ip = ARP().psrc #extract IP from dummy generated header
-    local_ip = local_ip.split('.')
     
     #compare our IP's for if we need to arp router, or IP
     dest_hw_addr = None
-    if((router_ip.split('.'[0:3])) == (dest_ip.split('.')[0:3])):
-        print("Same subnet")
+    if(determineNetmask(dest_ip)):
         dest_hw_addr = sendARP(dest_ip)
     #arp  our router for the HW addr
     else:
-        pre_proc_ip = router_ip.split('.'[0:3]) #split the initial
         dst_hw_addr = sendARP(router_ip)
     #send 
     eth = Ether(type=0x800, dst=dest_hw_addr)
-    iph = IP(dst=dest_ip, ttl=6,proto=4)
+    iph = IP(dst=dest_ip, ttl=6,proto=234)
     final_packet = eth/iph
     raw_payload = Raw(load=str(msg))
     final_packet.add_payload(raw_payload)
@@ -72,8 +86,7 @@ def sendIPmsg(dest_ip, router_ip, msg):
 
 if __name__ == "__main__":
     global debug
-    debug = 1
-    determineNetmask()
+    debug = 0
     # send using IP
     if(sys.argv[1] == "ip"):
         sendIPmsg(sys.argv[2], sys.argv[3], sys.argv[4])
@@ -88,6 +101,7 @@ if __name__ == "__main__":
     # recv
     if(sys.argv[1] == "recv"):
         our_addr = get_if_hwaddr(conf.iface)
+        displayInfo()
         while(1):
 
             # use sniff to recieve packets on our default interface
