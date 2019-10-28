@@ -1,8 +1,15 @@
 import socket
 from scapy.all import *
 import sys
+import netifaces
 
 # sudo fuser -k 6653/tcp
+
+def determineNetmask():
+    interface = conf.iface #default intesrfaces
+    info = netifaces.ifaddresses(interface)
+    print(f"Interface Info: {info[netifaces.AF_INET][0]}")
+    print(f"Our Netmask: {info[netifaces.AF_INET][0]['netmask']}")
 
 # send arp to destination IP, return its HW address
 def sendARP(dest_ip):
@@ -53,7 +60,7 @@ def sendIPmsg(dest_ip, router_ip, msg):
         dst_hw_addr = sendARP(router_ip)
     #send 
     eth = Ether(type=0x800, dst=dest_hw_addr)
-    iph = IP(dst=dest_ip, ttl=6)
+    iph = IP(dst=dest_ip, ttl=6,proto=4)
     final_packet = eth/iph
     raw_payload = Raw(load=str(msg))
     final_packet.add_payload(raw_payload)
@@ -64,8 +71,8 @@ def sendIPmsg(dest_ip, router_ip, msg):
 
 if __name__ == "__main__":
     global debug
-    debug = 0
-
+    debug = 1
+    determineNetmask()
     # send using IP
     if(sys.argv[1] == "ip"):
         sendIPmsg(sys.argv[2], sys.argv[3], sys.argv[4])
