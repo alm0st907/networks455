@@ -10,6 +10,7 @@ def determineNetmask():
     info = netifaces.ifaddresses(interface)
     print(f"Interface Info: {info[netifaces.AF_INET][0]}")
     print(f"Our Netmask: {info[netifaces.AF_INET][0]['netmask']}")
+    # IPNetwork("myIP/myNetmask") == IPNetwork("theirIP/myNetwork")
 
 # send arp to destination IP, return its HW address
 def sendARP(dest_ip):
