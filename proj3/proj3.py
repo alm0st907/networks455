@@ -1,6 +1,7 @@
 import socket
 from scapy.all import *
-from scapy.layers.l2 import Ether,ARP #removes Ether,IP,ARP lint errors, but is already included through scapy.all
+# removes Ether,IP,ARP lint errors, but is already included through scapy.all
+from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP
 import sys
 import netifaces
@@ -8,7 +9,7 @@ from netaddr import *
 
 # sudo fuser -k 6653/tcp
 
-
+# displays system info
 def displayInfo():
     interface = conf.iface  # default intesrfaces
     print(f"Using default interface pulled: {conf.iface}")
@@ -36,16 +37,15 @@ def determineNetmask(dest_ip):
         return False
 
 # send arp to destination IP, return its HW address
-
-
 def sendARP(dest_ip):
 
-    eth = Ether(type=0x806, dst="ff:ff:ff:ff:ff:ff", src=get_if_hwaddr(conf.iface))
+    eth = Ether(type=0x806, dst="ff:ff:ff:ff:ff:ff",
+                src=get_if_hwaddr(conf.iface))
     arph = ARP(pdst=dest_ip)
     final_packet = eth/arph
     if(debug):
         final_packet.show()
-    resp = srp1(final_packet,iface=conf.iface)
+    resp = srp1(final_packet, iface=conf.iface)
     try:
         if(resp.haslayer(ARP)):
             print("received an ARP")
@@ -58,14 +58,14 @@ def sendARP(dest_ip):
 
 
 def sendEthMsg(dest_hw_addr, msg):
-    eth = Ether(type=0x800, dst=dest_hw_addr, src = get_if_hwaddr(conf.iface))
+    eth = Ether(type=0x800, dst=dest_hw_addr, src=get_if_hwaddr(conf.iface))
     raw_payload = Raw(load=str(msg))
     eth.add_payload(raw_payload)
     if(debug):
         print("\nsend eth header\n")
         eth.show()
-    #send packet using socked on conf.iface, which is default interface (h1x1-eth0, etc)
-    sendp(eth,iface=conf.iface)
+    # send packet using socked on conf.iface, which is default interface (h1x1-eth0, etc)
+    sendp(eth, iface=conf.iface)
 
 
 def sendIPmsg(dest_ip, router_ip, msg):
@@ -82,31 +82,32 @@ def sendIPmsg(dest_ip, router_ip, msg):
     else:
         dst_hw_addr = sendARP(router_ip)
     # send
-    eth = Ether(type=0x800, dst=dst_hw_addr, src = get_if_hwaddr(conf.iface))
+    eth = Ether(type=0x800, dst=dst_hw_addr, src=get_if_hwaddr(conf.iface))
     # pulled protocol numbers from https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
     # 253 is for testing and experimentation, which silenced some wireshark oddities
     iph = IP(dst=dest_ip, ttl=6, proto=253)
-    
+
     final_packet = eth/iph
     raw_payload = Raw(load=str(msg))
     final_packet.add_payload(raw_payload)
     if(debug):
         final_packet.show()
 
-    #clear checksum and let scapy recalc
+    # clear checksum and let scapy recalc
     del final_packet[IP].chksum
     final_packet = final_packet.__class__(bytes(final_packet))
     print(f"Checksum calculated by Scapy: {hex(final_packet[IP].chksum)}")
 
-    #send packet using socked on conf.iface, which is default interface (h1x1-eth0, etc)
-    sendp(final_packet, iface = conf.iface)
+    # send packet using socked on conf.iface, which is default interface (h1x1-eth0, etc)
+    sendp(final_packet, iface=conf.iface)
+
 
 
 if __name__ == "__main__":
     global debug
     debug = 0
     # send using IP
-    if(sys.argv[1] == "send" and len(sys.argv) > 4):
+    if(len(sys.argv) > 4 and sys.argv[1] == "send"):
         displayInfo()
         sendIPmsg(sys.argv[2], sys.argv[3], sys.argv[4])
         exit(0)
@@ -119,7 +120,7 @@ if __name__ == "__main__":
     #     exit(0)
 
     # recv
-    if(sys.argv[1] == "recv"):
+    if(len(sys.argv) > 1 and sys.argv[1] == "recv"):
         our_addr = get_if_hwaddr(conf.iface)
         displayInfo()
         while(1):
@@ -135,6 +136,7 @@ if __name__ == "__main__":
                 if(debug):
                     msg_pkt[0].show()
                 print("Message Recieved")
+                print(f"Checksum {hex(msg_pkt[0][IP].chksum)}")
                 msg_pkt[0][Raw].show()
                 print("\n")
 
