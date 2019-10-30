@@ -9,7 +9,3 @@ Interfaces are automatically grabbed programmatically
 
 ## Dependencies
 Run with python 3. Needs scapy, netifaces, and netaddr
-
----
-## Known Issues:
-IP checksums are different by 0x0100 when sent to different subnet.

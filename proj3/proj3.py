@@ -69,6 +69,17 @@ def sendEthMsg(dest_hw_addr, msg):
     # send packet using socked on conf.iface, which is default interface (h1x1-eth0, etc)
     sendp(eth, iface=conf.iface)
 
+#returns checksum from set of 16bit words
+def ip_checksum(ip_header,msg):
+
+    csum = 0
+    for word in ip_header:
+        csum += int(word, base=16)
+
+    csum += (csum >> 16)          #add nibble
+    csum = csum & 0xFFFF ^ 0xFFFF #trim to 16 bits and complement
+
+    return csum-len(msg)
 
 def sendIPmsg(dest_ip, router_ip, msg):
     '''
@@ -90,15 +101,33 @@ def sendIPmsg(dest_ip, router_ip, msg):
     iph = IP(dst=dest_ip, ttl=6, proto=253)
 
     final_packet = eth/iph
+    final_packet[IP].chksum = 0
+
+    # dump our IP packet and split into 16 bit words to checksum
+    ip_dump = chexdump(final_packet[IP],dump = True)
+    ip_dump = ip_dump.replace(',','').replace('0x','')
+    ip_dump = ''.join(ip_dump.split())
+    ip_dump = [ip_dump[x:x+4] for x in range(0,len(ip_dump),4)]
+    if(debug):
+        print(f"before payload\n{ip_dump}")
+    print(f"Our Checksum is {hex(ip_checksum(ip_dump,msg))}")
+    our_chk = hex(ip_checksum(ip_dump,msg))
+
     raw_payload = Raw(load=str(msg))
     final_packet.add_payload(raw_payload)
     if(debug):
         final_packet.show()
 
+
+
     # clear checksum and let scapy recalc
     del final_packet[IP].chksum
     final_packet = final_packet.__class__(bytes(final_packet))
     print(f"Checksum calculated by Scapy: {hex(final_packet[IP].chksum)}")
+
+    if(debug):
+        print(f"difference: {int(our_chk,base = 16)-int(final_packet[IP].chksum)}")
+
 
     # send packet using socked on conf.iface, which is default interface (h1x1-eth0, etc)
     sendp(final_packet, iface=conf.iface)
