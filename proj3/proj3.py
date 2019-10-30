@@ -86,13 +86,18 @@ def sendIPmsg(dest_ip, router_ip, msg):
     # pulled protocol numbers from https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
     # 253 is for testing and experimentation, which silenced some wireshark oddities
     iph = IP(dst=dest_ip, ttl=6, proto=253)
-    del iph.chksum
+    
     final_packet = eth/iph
     raw_payload = Raw(load=str(msg))
     final_packet.add_payload(raw_payload)
     if(debug):
         final_packet.show()
-    final_packet.show2()
+
+    #clear checksum and let scapy recalc
+    del final_packet[IP].chksum
+    final_packet = final_packet.__class__(bytes(final_packet))
+    print(f"Checksum calculated by Scapy: {hex(final_packet[IP].chksum)}")
+
     #send packet using socked on conf.iface, which is default interface (h1x1-eth0, etc)
     sendp(final_packet, iface = conf.iface)
 
@@ -101,17 +106,17 @@ if __name__ == "__main__":
     global debug
     debug = 0
     # send using IP
-    if(sys.argv[1] == "ip"):
+    if(sys.argv[1] == "send" and len(sys.argv) > 4):
         displayInfo()
         sendIPmsg(sys.argv[2], sys.argv[3], sys.argv[4])
         exit(0)
 
-    # send ethernet message
-    if(len(sys.argv) > 2 and sys.argv[1] == "send"):
-        displayInfo()
-        dest_hw = sendARP(str(sys.argv[2]))
-        sendEthMsg(dest_hw, str(sys.argv[3]))
-        exit(0)
+    # # send ethernet message
+    # if(len(sys.argv) > 2 and sys.argv[1] == "send"):
+    #     displayInfo()
+    #     dest_hw = sendARP(str(sys.argv[2]))
+    #     sendEthMsg(dest_hw, str(sys.argv[3]))
+    #     exit(0)
 
     # recv
     if(sys.argv[1] == "recv"):
@@ -134,4 +139,7 @@ if __name__ == "__main__":
                 print("\n")
 
     else:
-        print("Bad input, exiting")
+        print("\nUsage:")
+        print("python3 proj3 recv")
+        print("python3 proj3 send <dest_ip> <router_ip> <message>")
+        print("Interfaces are automatically pulled from system programmatically\nProgram depends on Scapy,netifaces,netaddr")
