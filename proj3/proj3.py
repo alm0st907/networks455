@@ -1,3 +1,5 @@
+# Garrett Rudisill
+# WSU ID 11461816
 import socket
 from scapy.all import *
 # removes Ether,IP,ARP lint errors, but is already included through scapy.all
