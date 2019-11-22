@@ -19,14 +19,26 @@ from scapy.all import *
 
 if __name__ == "__main__":
     
-    UDP_IP = "192.168.1.86"
-    UDP_PORT = 5005
-    MESSAGE = "fuck you hahn and fuck you jeff"
+    if (len(sys.argv)<3):
+        exit(1)
 
+    UDP_IP = sys.argv[1]
+    filename = sys.argv[2]
+    print("Opening file:",filename)
     print("UDP target IP:", UDP_IP)
-    print("UDP target port:", UDP_PORT)
-    print("message:", MESSAGE)
+    # print("UDP target port:", UDP_PORT)
+    UDP_PORT = 5005
 
+    file = open(filename,'r')
+    lines = file.readlines()
     sock = socket.socket(socket.AF_INET, # Internet
                         socket.SOCK_DGRAM) # UDP
-    sock.sendto(MESSAGE, (UDP_IP, UDP_PORT))
+
+    window = 10 # send only max of 10 packets per window
+    sentPackets = 0
+
+    for line in lines:
+        sock.sendto(bytes(line,encoding='UTF-8'), (UDP_IP, UDP_PORT))
+
+    
+            
