@@ -39,6 +39,25 @@ if __name__ == "__main__":
 
     for line in lines:
         sock.sendto(bytes(line,encoding='UTF-8'), (UDP_IP, UDP_PORT))
-
+    print("completed send")
+    while(True):
+        sock = socket.socket(socket.AF_INET, # Internet
+                    socket.SOCK_DGRAM) # UDP
+        sock.bind(('172.31.98.12', 5006))
+        sock.settimeout(5)
+        try: 
+            data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
+            if data.decode('UTF-8') == 'end':
+                print(data.decode('UTF-8'))
+                print('we acked')
+                break
+            else:
+                print('failed to ack')
+        except (socket.timeout):
+            # if data is None:
+            #     print('failed ack')
+            # else:
+            break
+    print('broke while')
     
             
