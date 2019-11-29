@@ -3,19 +3,20 @@ import socket
 global debug
 
 
-def sendAck():
+def sendAck(buffer):
     newsock = socket.socket(socket.AF_INET,  # Internet
         socket.SOCK_DGRAM)  # UDP
-    newsock.sendto(bytes('end', encoding='UTF-8'), ('172.31.98.12', 5006))
+    newsock.sendto(bytes(buffer, encoding='UTF-8'), (UDP_IP, 5007))
     newsock.close()
-    print('sent ack')
+    print(f'sent ack buf:{buffer}')
 
 
 if __name__ == "__main__":
 
     print('Project 4 client')
 
-    UDP_IP = '172.31.98.12'
+    global UDP_IP
+    UDP_IP = '192.168.0.6'
     UDP_PORT = 5005
 
     sock = socket.socket(socket.AF_INET,  # Internet
@@ -24,18 +25,26 @@ if __name__ == "__main__":
     sock.settimeout(4)
     file = open("output.txt", "a+")
     i = 0
+    recvBuffer = ''
     while True:
         try:
             if i is 10:
-                sendAck()
+                sendAck(recvBuffer)
                 i = 0
+                recvBuffer = ''
             data, addr = sock.recvfrom(1024)  # buffer size is 1024 bytes
             # print(data.decode('UTF-8'), end='')
-            file.write(data.decode('UTF-8'))
+            if (data.decode('UTF-8') == 'term'):
+                print('message received, terminate connection')
+                sock.close()
+                exit(0)
+
+            file.write(data.decode('UTF-8')[1:])
+            recvBuffer += data.decode('UTF-8')[0]
             i+=1
         except (socket.timeout):
             print("Socket timeout, closing")
-            sendAck()
+            sendAck('term')
             break
     
 
