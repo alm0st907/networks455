@@ -52,3 +52,5 @@ Mkfile.old
 dkms.conf
 proj1/run
 final/output.txt
+proj3/.vscode/settings.json
+final/.vscode/settings.json
