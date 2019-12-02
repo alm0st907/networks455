@@ -12,14 +12,12 @@ def getIP():
 
 
 # doing go back n, with a given buffer window, N start point
-def sendPacket(buffer, n, sendIP, port):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+def sendPacket(buffer, n, sendIP, port,sock):
     while n < len(buffer):
         data = buffer[n]
         # print(data,end='')
         sock.sendto(bytes(str(n)+data, encoding='UTF-8'), (sendIP, port))
         n += 1
-    sock.close()
 
 def sendTerm(sendIP,port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -27,15 +25,13 @@ def sendTerm(sendIP,port):
     sock.close()
 
 # either we recieve ack, or n position to start at
-def recvACK(recvIP, port):
+def recvACK(recvIP, port,sock):
     # print(recvIP)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((recvIP, port))
-    sock.settimeout(5)
     try:
         data, addr = sock.recvfrom(1024)
         data = data.decode('UTF-8')
-        sock.close()
+        # sock.close()
+        if data == '' or data == '\x00': data = 0
         if data == 'ACK':
             return 10  # acked our full window
         else:
@@ -74,17 +70,19 @@ if __name__ == "__main__":
     file = open(filename, 'r')
     lines = file.readlines()
 
-
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((recvIP, port))
+    sock.settimeout(5)
 
     buffer = makeWindows(lines)
     for window in buffer:
         ackNum = 0  # start at 0
         while ackNum != 10:
             n = ackNum  # we start at N in window
-            sendPacket(window, n, sendIP, port)
+            sendPacket(window, n, sendIP, port,sock)
             # print('Sent Window')
-            ackNum = 10
-            # ackNum = recvACK(recvIP, port)
+            # ackNum = 10
+            ackNum = recvACK(recvIP, port,sock)
             print(f'Acked {ackNum}')
     sendTerm(sendIP,port)
     print('sent term')
