@@ -86,8 +86,3 @@ if __name__ == "__main__":
             print(f'Acked {ackNum}')
     sendTerm(sendIP,port)
     print('sent term')
-
-    # for windows in buffer:
-    #     for line in windows:
-    #         print(line, end='')
-    #         output.write(line)

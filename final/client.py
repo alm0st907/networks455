@@ -75,15 +75,13 @@ if __name__ == "__main__":
         # output.write(msg)
         if nextPacket == packetNum:
             output.write(msg)
-
-            #set number and be ready to loopback
-            if packetNum == 9:
-                nextPacket = 0
-                sendACK(addr[0],port,'ACK')
-            else:
-                nextPacket = packetNum + 1
+            nextPacket+=1     
         else:
             print('Dropped packet')
             print(nextPacket)
             sendACK(addr[0],port,nextPacket)
-            
+
+            #set number and be ready to loopback
+        if nextPacket == 10:
+            nextPacket = 0
+            sendACK(addr[0],port,'ACK')
