@@ -14,10 +14,9 @@ def getIP():
     return IP
 
 #may need to pass in premade socket for this to work right rather than creating a socket, sending the ack then closing
-def sendACK(sendIP,port,ack):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+def sendACK(sendIP,port,ack,sock):
+    # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(bytes(str(ack),encoding='UTF-8'), (sendIP, port))
-    sock.close()
 
 
 if __name__ == "__main__":
@@ -60,11 +59,12 @@ if __name__ == "__main__":
         else:
             print('Dropped packet')
             print(nextPacket)
-            sendACK(addr[0],port,nextPacket)
+            sendACK(addr[0],port,nextPacket,sock)
             # time.sleep(1)
 
         # if our next packet hits 10, we have recieved all packets (sn is 0-9 for 10 packets total)
         # reset to next packet of 0, send ACK to client to advance the window
         if nextPacket == 10:
+            print("reset next packet")
             nextPacket = 0
-            sendACK(addr[0],port,'ACK')
+            sendACK(addr[0],port,'ACK',sock)

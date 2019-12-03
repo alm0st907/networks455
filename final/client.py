@@ -34,7 +34,7 @@ def sendTerm(sendIP,port):
 def recvACK(recvIP, port,sock):
     # print(recvIP)
     data = None
-    sock.settimeout(3) #no response for 3 seconds, connection is borked and we timeout
+    # sock.settimeout(3) #no response for 3 seconds, connection is borked and we timeout
     while (data is None) or (data is '') or (data is '\x00'):
         try:
             data, addr = sock.recvfrom(1024)
@@ -45,7 +45,7 @@ def recvACK(recvIP, port,sock):
 
             if data == '' or data == '\x00': pass
             else:
-                sock.settimeout(0) #remove the timeout 
+                # sock.settimeout(0) #remove the timeout 
                 return int(data) #returning where we need to restart at
         except(socket.timeout):
             print('socket timed out, exiting')
@@ -76,7 +76,7 @@ def makeWindows(fileLines):
 if __name__ == "__main__":
     if (len(sys.argv) < 3): #if we dont have ip/file args we exit
         exit(1)
-    window = 10
+    packetWindow = 10
     port = 5005
     sendIP = sys.argv[1]
     filename = sys.argv[2]
@@ -93,15 +93,15 @@ if __name__ == "__main__":
 
     #make our windows from the lines
     buffer = makeWindows(lines)
-    termWindow = ['term'] #redundant window with term to assist if term message gets dropped
-    buffer.append(termWindow)
+    # termWindow = ['term'] #redundant window with term to assist if term message gets dropped
+    # buffer.append(termWindow)
 
-    sock.settimeout(3) # timeout of 3 seconds so we eventually term the client
+    # sock.settimeout(3) # timeout of 3 seconds so we eventually term the client
     #iterate through windows
     for window in buffer:
         n = 0  # start at 0
         # we only advance to next window when current window has been fully acked
-        while n!= window:
+        while n < packetWindow:
             #send our window, initially starting at n position of 0 (initial send)
             sendPacket(window, n, sendIP, port,sock)
             # print('Sent Window')
