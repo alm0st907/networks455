@@ -9,40 +9,27 @@ def getIP():
     s.close()
     return IP
 
-def recvPackets(file,recvIP,port):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((recvIP, port))
-    i = 0
-    try:
-        data, addr = sock.recvfrom(1024)
-        data = data.decode('UTF-8')
-        packetNum = data[0]
-        print(f'recieved packet {packet}')
-        msg = data[1:]
-        file.write(msg)
-
-    except(socket.timeout):
-        print('socket timed out, exiting')
-        sock.close()
-        exit(1)
-
 def recvACK(sock):
     # print(recvIP)
     # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     # sock.bind((recvIP, port))
-    sock.settimeout(5)
-    try:
-        data, addr = sock.recvfrom(1024)
-        data = data.decode('UTF-8')
-        # sock.close()
-        if data == 'ACK':
-            return 10  # acked our full window
-        else:
-            return int(data)
-    except(socket.timeout):
-        print('socket timed out, exiting')
-        sock.close()
-        exit(1)
+    # sock.settimeout(5)
+    data = None
+    while (data is None) or (data is '') or (data is '\x00'):
+        try:
+            data, addr = sock.recvfrom(1024)
+            data = data.decode('UTF-8')
+            # sock.close()
+            if data == 'ACK':
+                return 10  # acked our full window
+
+            if data == '' or data == '\x00': pass
+            else:
+                return int(data)
+        except(socket.timeout):
+            print('socket timed out, exiting')
+            sock.close()
+            exit(1)
 
 def sendACK(sendIP,port,ack):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -58,7 +45,6 @@ if __name__ == "__main__":
     print("started client")
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((recvIP, port))
-    socket.timeout(5)
     nextPacket = 0
     while True:
 
@@ -66,12 +52,12 @@ if __name__ == "__main__":
         data = data.decode('UTF-8')
         msg = data[1:]
         # print(data)
-        if data == 'term':
+        if data =='term' or data[1:] == 'term':
             print('finished')
             sock.close()
             exit(0)
         packetNum = int(data[0])
-        print(f'recieved packet {packetNum}')
+        print(f'expected {nextPacket} recieved packet {packetNum}')
         # output.write(msg)
         if nextPacket == packetNum:
             output.write(msg)
@@ -80,6 +66,7 @@ if __name__ == "__main__":
             print('Dropped packet')
             print(nextPacket)
             sendACK(addr[0],port,nextPacket)
+            # time.sleep(1)
 
             #set number and be ready to loopback
         if nextPacket == 10:

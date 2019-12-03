@@ -27,19 +27,23 @@ def sendTerm(sendIP,port):
 # either we recieve ack, or n position to start at
 def recvACK(recvIP, port,sock):
     # print(recvIP)
-    try:
-        data, addr = sock.recvfrom(1024)
-        data = data.decode('UTF-8')
-        # sock.close()
-        if data == '' or data == '\x00': data = 0
-        if data == 'ACK':
-            return 10  # acked our full window
-        else:
-            return int(data)
-    except(socket.timeout):
-        print('socket timed out, exiting')
-        sock.close()
-        exit(1)
+    data = None
+    while (data is None) or (data is '') or (data is '\x00'):
+        try:
+            data, addr = sock.recvfrom(1024)
+            data = data.decode('UTF-8')
+            # sock.close()
+            if data == 'ACK':
+                return 10  # acked our full window
+
+            if data == '' or data == '\x00': pass
+            else:
+                return int(data)
+        except(socket.timeout):
+            print('socket timed out, exiting')
+            sendTerm(sendIP,port)
+            sock.close()
+            exit(1)
 
 
 def makeWindows(fileLines):
@@ -72,17 +76,21 @@ if __name__ == "__main__":
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((recvIP, port))
-    sock.settimeout(5)
+    # sock.settimeout(5)
 
     buffer = makeWindows(lines)
+    termWindow = ['term']
+    buffer.append(termWindow)
+
+    sock.settimeout(3)
     for window in buffer:
-        ackNum = 0  # start at 0
-        while ackNum != 10:
-            n = ackNum  # we start at N in window
+        n = 0  # start at 0
+        while n!= 10:
             sendPacket(window, n, sendIP, port,sock)
             # print('Sent Window')
             # ackNum = 10
-            ackNum = recvACK(recvIP, port,sock)
-            print(f'Acked {ackNum}')
+            n = recvACK(recvIP, port,sock)
+            print(f'Acked {n}')
+            time.sleep(.2)
     sendTerm(sendIP,port)
     print('sent term')
