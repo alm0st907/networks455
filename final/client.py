@@ -75,6 +75,7 @@ def makeWindows(fileLines):
 
 if __name__ == "__main__":
     if (len(sys.argv) < 3): #if we dont have ip/file args we exit
+        print("run as:\npython3 client.py <ip> <filename>")
         exit(1)
     packetWindow = 10
     port = 5005
@@ -96,7 +97,7 @@ if __name__ == "__main__":
     # termWindow = ['term'] #redundant window with term to assist if term message gets dropped
     # buffer.append(termWindow)
 
-    # sock.settimeout(3) # timeout of 3 seconds so we eventually term the client
+    sock.settimeout(3) # timeout of 3 seconds so we eventually term the client
     #iterate through windows
     for window in buffer:
         n = 0  # start at 0
