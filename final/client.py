@@ -3,7 +3,7 @@ garrett rudisill
 sending side of the project
 '''
 import socket
-from scapy.all import *
+import sys
 
 # python way to cross platform get IP
 def getIP():
