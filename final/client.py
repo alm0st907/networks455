@@ -34,7 +34,7 @@ def sendTerm(sendIP,port):
 def recvACK(recvIP, port,sock):
     # print(recvIP)
     data = None
-    # sock.settimeout(3) #no response for 3 seconds, connection is borked and we timeout
+    sock.settimeout(5) #no response for 3 seconds, connection is borked and we timeout
     while (data is None) or (data is '') or (data is '\x00'):
         try:
             data, addr = sock.recvfrom(1024)

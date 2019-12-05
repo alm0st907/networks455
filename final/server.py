@@ -61,21 +61,20 @@ if __name__ == "__main__":
                 output.write(msg)
                 nextPacket+=1     
             #if the packet is not expeceted, we nack the packet we were expecting so the client can resend from that point on
-            else:
-                print('Dropped packet')
-                print(nextPacket)
-                sendACK(addr[0],port,nextPacket,sock)
-                # time.sleep(1)
+)
+
+        #catch timeout exception
+        except(socket.timeout):
 
             # if our next packet hits 10, we have recieved all packets (sn is 0-9 for 10 packets total)
             # reset to next packet of 0, send ACK to client to advance the window
             if nextPacket == 10:
-                print("reset next packet")
+                print('ACK')
                 nextPacket = 0
-                sendACK(addr[0],port,'ACK',sock)
-
-        #catch timeout exception
-        except(socket.timeout):
-            print('socket timed out, exiting')
-            sock.close()
-            exit(1)
+                sendACK(addr[0],port,'ACK',sock
+            else:
+                print(f'{nextPacket}NACK')
+                print(nextPacket)
+                sendACK(addr[0],port,nextPacket,sock)
+                # time.sleep(1)
+   
