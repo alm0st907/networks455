@@ -3,7 +3,7 @@ garrett rudisill
 receive side of project
 '''
 import socket
-from scapy.all import *
+import sys
 
 def getIP():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
