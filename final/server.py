@@ -3,7 +3,7 @@ garrett rudisill
 receive side of project
 '''
 import socket
-from scapy.all import *
+import sys
 
 def getIP():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -81,7 +81,9 @@ if __name__ == "__main__":
             if nextPacket == (windowSize+1):
                 print('ACK')
                 nextPacket = 0
-                sendACK(addr[0],port,'ACK',sock)
+                i = 0
+                while(i<5): # flood with acks so it doesnt get dropped
+                    sendACK(addr[0],port,'ACK',sock)
                 noWrite = 0
 
             else:

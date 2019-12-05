@@ -3,7 +3,7 @@ garrett rudisill
 sending side of the project
 '''
 import socket
-from scapy.all import *
+import sys
 
 # python way to cross platform get IP
 def getIP():
@@ -120,5 +120,8 @@ if __name__ == "__main__":
 
 
     #send a termination since we are done sending windows
-    sendTerm(sendIP,port)
-    print('sent term')
+    termResends = 0
+    while(termResends < 5):
+        sendTerm(sendIP,port)
+        termResends+=1
+    print('term connection')
