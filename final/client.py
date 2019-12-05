@@ -17,10 +17,11 @@ def getIP():
 
 # doing go back n, with a given buffer window, N start point
 def sendPacket(buffer, n, sendIP, port,sock):
-    while n < len(buffer):
+    windowSize = len(buffer)
+    while n < windowSize:
         data = buffer[n]
         # print(data,end='')
-        sock.sendto(bytes(str(n)+data, encoding='UTF-8'), (sendIP, port))
+        sock.sendto(bytes(str(n)+str(windowSize-1)+data, encoding='UTF-8'), (sendIP, port))
         n += 1
 
 #shortcut to just send a termination signal
@@ -34,7 +35,7 @@ def sendTerm(sendIP,port):
 def recvACK(recvIP, port,sock):
     # print(recvIP)
     data = None
-    sock.settimeout(5) #no response for 3 seconds, connection is borked and we timeout
+    sock.settimeout(6) #no response for 3 seconds, connection is borked and we timeout
     while (data is None) or (data is '') or (data is '\x00'):
         try:
             data, addr = sock.recvfrom(1024)
@@ -97,12 +98,13 @@ if __name__ == "__main__":
     # termWindow = ['term'] #redundant window with term to assist if term message gets dropped
     # buffer.append(termWindow)
 
-    sock.settimeout(3) # timeout of 3 seconds so we eventually term the client
+    sock.settimeout(6) # timeout of 3 seconds so we eventually term the client
     #iterate through windows
     for window in buffer:
         n = 0  # start at 0
         # we only advance to next window when current window has been fully acked
-        while n < packetWindow:
+        windowSize = len(window)
+        while n < windowSize:
             #send our window, initially starting at n position of 0 (initial send)
             sendPacket(window, n, sendIP, port,sock)
             # print('Sent Window')
@@ -111,7 +113,11 @@ if __name__ == "__main__":
             # otherwise n is what the expected packet was and not received
             # this will loop to resend window from that index on (packet SN's and buffer are both 0 indexed)
             n = recvACK(recvIP, port,sock) 
-            print(f'Acked {n}') #debugging what the ack was
+            if n < 10:
+                print(f'{n}NACK') #debugging what the ack was
+            else:
+                print('ACKED, advance window')
+
 
     #send a termination since we are done sending windows
     sendTerm(sendIP,port)
