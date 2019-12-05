@@ -97,6 +97,7 @@ if __name__ == "__main__":
     buffer = makeWindows(lines)
     # termWindow = ['term'] #redundant window with term to assist if term message gets dropped
     # buffer.append(termWindow)
+    lastAck = 0
 
     sock.settimeout(6) # timeout of 3 seconds so we eventually term the client
     #iterate through windows
@@ -112,13 +113,25 @@ if __name__ == "__main__":
             # n is either the ACK of 10 (we got the full window)
             # otherwise n is what the expected packet was and not received
             # this will loop to resend window from that index on (packet SN's and buffer are both 0 indexed)
-            n = recvACK(recvIP, port,sock) 
+            n = recvACK(recvIP, port,sock)
+            if n < lastAck :
+                print('implicit ACKED, advance window')
+                lastAck = 0
+                break #we dropped the ack but we can advance
+                
+
             if n < 10:
                 print(f'{n}NACK') #debugging what the ack was
+                lastAck = n
+
             else:
+                lastAck = 0
                 print('ACKED, advance window')
 
 
     #send a termination since we are done sending windows
-    sendTerm(sendIP,port)
+    terminationFloodCount = 0
+    while(terminationFloodCount<10):
+        sendTerm(sendIP,port)
+        terminationFloodCount+=1
     print('sent term')
